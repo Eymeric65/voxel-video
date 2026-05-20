@@ -1,0 +1,185 @@
+:root {
+  --panel-bg: rgba(13, 20, 33, 0.7);
+  --panel-border: rgba(255, 255, 255, 0.1);
+  --text-strong: #f0f4f8;
+  --text: #cbd5e0;
+  --muted: #718096;
+  --shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #040a14;
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.control-panel {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: var(--panel-bg);
+  border-right: 1px solid var(--panel-border);
+  backdrop-filter: blur(18px);
+  overflow-y: auto;
+  z-index: 10;
+}
+
+/* Scrollable Right Area */
+.viewer-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px;
+  overflow-y: auto;
+  min-height: 0;
+  scroll-behavior: smooth;
+}
+
+/* Hero 3D Map */
+.hero-map {
+  flex-shrink: 0;
+  height: calc(100vh - 40px);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 28px;
+  padding: 24px;
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow);
+  position: relative;
+}
+
+.map-frame {
+  height: 100%;
+  position: relative;
+  background: #000;
+  border-radius: 48px; /* Stronger rounding for 3D map */
+  overflow: hidden;
+}
+
+/* Previews with "Direct Rounding" look */
+.preview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.preview-card {
+  aspect-ratio: 1 / 1;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 32px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow);
+}
+
+.preview-canvas-wrapper {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  position: relative;
+  /* No padding here to keep the image large */
+}
+
+.preview-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 48px; /* Apply the strong rounding DIRECTLY to the image/canvas */
+  background: rgba(0, 0, 0, 0.4);
+  image-rendering: pixelated; /* Keeps the sharp look if needed, or remove for smooth */
+}
+
+/* Loading Screens */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 10, 20, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  color: white;
+  text-align: center;
+  border-radius: 48px;
+}
+
+.mini-loading-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+  border-radius: 48px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Typography & Controls */
+.panel-copy h1 { margin: 0; color: white; font-size: 2.2rem; }
+.intro { font-size: 0.9rem; line-height: 1.4; }
+.controls { display: grid; gap: 14px; }
+.controls label { display: grid; gap: 4px; color: white; font-weight: 600; font-size: 0.9rem; }
+.controls input[type='number'] { padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--panel-border); color: white; border-radius: 8px; }
+.generate-button { padding: 14px; border: none; border-radius: 12px; background: linear-gradient(135deg, #8fe2ff, #f3d28d); font-weight: 700; cursor: pointer; }
+
+/* Social Buttons */
+.social-links { display: flex; flex-direction: column; gap: 8px; }
+.youtube-button { background: #f00; color: white; padding: 10px; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; font-weight: 700; font-size: 0.9rem; }
+.youtube-button svg { width: 16px; height: 16px; }
+.secondary-links { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.secondary-links a { background: rgba(255,255,255,0.1); color: white; padding: 8px; border-radius: 8px; text-decoration: none; text-align: center; font-size: 0.8rem; }
+
+/* Overlay Info */
+.map-overlay-info {
+  position: absolute; bottom: 20px; left: 20px; z-index: 10;
+  background: rgba(4, 10, 20, 0.7); padding: 12px 20px; border-radius: 16px;
+  backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.map-overlay-info p { margin: 0; color: #8fe2ff; font-size: 0.65rem; text-transform: uppercase; }
+.map-overlay-info strong { color: white; font-size: 1.1rem; }
+
+.preview-labels span { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
+.preview-labels strong { font-size: 0.9rem; color: white; }
+
+.status-line { margin-top: auto; font-size: 0.75rem; color: var(--muted); padding-top: 10px; }
+
+@media (max-width: 1100px) {
+  body { overflow: auto; height: auto; }
+  .app-shell { display: flex; flex-direction: column; height: auto; overflow: visible; }
+  .control-panel { border: none; border-bottom: 1px solid var(--panel-border); }
+  .viewer-panel { overflow: visible; padding: 10px; }
+  .hero-map { height: 70vh; padding: 16px; }
+  .preview-grid { grid-template-columns: 1fr; }
+  .preview-card { aspect-ratio: 1 / 1; height: auto; width: 100%; padding: 24px; }
+  .map-overlay-info strong { font-size: 0.9rem; }
+}
