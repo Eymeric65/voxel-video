@@ -20,6 +20,8 @@ interface WorkerResultMessage {
     heightMapBuffer: ArrayBuffer
     shadedPixelsBuffer: ArrayBuffer
     rawPixelsBuffer: ArrayBuffer
+    perlinContribBuffer: ArrayBuffer
+    valueContribBuffer: ArrayBuffer
   }
 }
 
@@ -52,6 +54,8 @@ self.onmessage = (event: MessageEvent<GenerateRequest>) => {
         heightMapBuffer: data.heightMapBuffer,
         shadedPixelsBuffer: data.shadedPixelsBuffer,
         rawPixelsBuffer: data.rawPixelsBuffer,
+        perlinContribBuffer: data.perlinContribBuffer,
+        valueContribBuffer: data.valueContribBuffer,
       },
     }
 
@@ -59,6 +63,8 @@ self.onmessage = (event: MessageEvent<GenerateRequest>) => {
       data.heightMapBuffer,
       data.shadedPixelsBuffer,
       data.rawPixelsBuffer,
+      data.perlinContribBuffer,
+      data.valueContribBuffer,
     ])
   } catch (error) {
     const messageText = error instanceof Error ? error.message : 'Erreur inconnue dans le worker.'

@@ -10,6 +10,8 @@ type TerrainRenderResult = {
   heightMapBuffer: ArrayBuffer
   shadedPixelsBuffer: ArrayBuffer
   rawPixelsBuffer: ArrayBuffer
+  perlinContribBuffer: ArrayBuffer
+  valueContribBuffer: ArrayBuffer
 }
 
 type WorkerResponse =
@@ -17,7 +19,7 @@ type WorkerResponse =
   | { type: 'result'; requestId: number; payload: TerrainRenderResult }
   | { type: 'error'; requestId?: number; message: string }
 
-const defaultSeed = 1028
+const defaultSeed = 8742
 const defaultSize = 512
 
 function createImageDataFromBuffer(buffer: ArrayBuffer, width: number, height: number) {
@@ -45,10 +47,14 @@ function App() {
 
   const mainCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const rawCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const perlinCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const valueCanvasRef = useRef<HTMLCanvasElement | null>(null)
 
   const [seed, setSeed] = useState(String(defaultSeed))
   const [size, setSize] = useState(String(defaultSize))
   const [heightScale, setHeightScale] = useState(0.5)
+  const [tuning, setTuning] = useState(new TerrainTuning())
+  const [isTuningCollapsed, setIsTuningCollapsed] = useState(true)
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [statusMessage, setStatusMessage] = useState('Prépare la génération du terrain.')
   const [terrain, setTerrain] = useState<TerrainRenderResult | null>(null)
@@ -97,6 +103,8 @@ function App() {
 
     drawCanvas(mainCanvasRef.current, terrain.shadedPixelsBuffer, terrain.width, terrain.height)
     drawCanvas(rawCanvasRef.current, terrain.rawPixelsBuffer, terrain.width, terrain.height)
+    drawCanvas(perlinCanvasRef.current, terrain.perlinContribBuffer, terrain.width, terrain.height)
+    drawCanvas(valueCanvasRef.current, terrain.valueContribBuffer, terrain.width, terrain.height)
   }, [terrain])
 
   // stats calculation removed to fix unused variable error
@@ -123,13 +131,12 @@ function App() {
     setStatus('loading')
     setStatusMessage(`Génération du terrain ${parsedSize} × ${parsedSize}...`)
 
-    const tuning = new TerrainTuning()
     worker.postMessage({
       type: 'generate',
       requestId,
       seed: parsedSeed,
       size: parsedSize,
-      tuning,
+      tuning: tuning,
     })
   }
 
@@ -177,7 +184,10 @@ function App() {
         <div className="controls">
           <label>
             Seed
-            <input type="number" value={seed} onChange={(event) => setSeed(event.target.value)} />
+            <div className="input-with-button">
+              <input type="number" value={seed} onChange={(event) => setSeed(event.target.value)} />
+              <button className="small-button" onClick={() => setSeed(String(Math.floor(Math.random() * 10000)))}>🎲</button>
+            </div>
           </label>
 
           <label>
@@ -203,6 +213,104 @@ function App() {
               onChange={(event) => setHeightScale(Number(event.target.value))}
             />
           </label>
+
+          <hr className="divider" />
+          <div className="section-header">
+            <div className="section-title" onClick={() => setIsTuningCollapsed(!isTuningCollapsed)}>
+              <p className="control-group-label">Terrain Parameters</p>
+              <span className={`collapse-icon ${isTuningCollapsed ? '' : 'open'}`}>▼</span>
+            </div>
+            {!isTuningCollapsed && (
+              <button className="text-button" onClick={() => setTuning(new TerrainTuning())}>
+                Reset
+              </button>
+            )}
+          </div>
+
+          {!isTuningCollapsed && (
+            <div className="collapsible-content">
+              <label title="Default: 0.17">
+                Water Line ({tuning.water_line})
+                <input
+                  type="range" min="0" max="1" step="0.01"
+                  value={tuning.water_line}
+                  onChange={(e) => setTuning(prev => ({ ...prev, water_line: Number(e.target.value) }))}
+                />
+              </label>
+
+              <label title="Default: 0.4">
+                Shore Line ({tuning.shore_line})
+                <input
+                  type="range" min="0" max="1" step="0.01"
+                  value={tuning.shore_line}
+                  onChange={(e) => setTuning(prev => ({ ...prev, shore_line: Number(e.target.value) }))}
+                />
+              </label>
+
+              <label title="Default: 0.72">
+                Mountain Start ({tuning.mountain_start})
+                <input
+                  type="range" min="0" max="1" step="0.01"
+                  value={tuning.mountain_start}
+                  onChange={(e) => setTuning(prev => ({ ...prev, mountain_start: Number(e.target.value) }))}
+                />
+              </label>
+
+              <label title="Default: 0.96">
+                Mountain End ({tuning.mountain_end})
+                <input
+                  type="range" min="0" max="1" step="0.01"
+                  value={tuning.mountain_end}
+                  onChange={(e) => setTuning(prev => ({ ...prev, mountain_end: Number(e.target.value) }))}
+                />
+              </label>
+
+              <label title="Default: 0.65">
+                Grass Line ({tuning.grass_line})
+                <input
+                  type="range" min="0" max="1" step="0.01"
+                  value={tuning.grass_line}
+                  onChange={(e) => setTuning(prev => ({ ...prev, grass_line: Number(e.target.value) }))}
+                />
+              </label>
+
+              <label title="Default: 0.86">
+                Snow Line ({tuning.snow_line})
+                <input
+                  type="range" min="0" max="1" step="0.01"
+                  value={tuning.snow_line}
+                  onChange={(e) => setTuning(prev => ({ ...prev, snow_line: Number(e.target.value) }))}
+                />
+              </label>
+
+              <label title="Default: 0.82">
+                Base Strength ({tuning.base_strength})
+                <input
+                  type="range" min="0" max="2" step="0.01"
+                  value={tuning.base_strength}
+                  onChange={(e) => setTuning(prev => ({ ...prev, base_strength: Number(e.target.value) }))}
+                />
+              </label>
+
+              <label title="Default: 0.18">
+                Mountain Strength ({tuning.value_strength})
+                <input
+                  type="range" min="0" max="1" step="0.01"
+                  value={tuning.value_strength}
+                  onChange={(e) => setTuning(prev => ({ ...prev, value_strength: Number(e.target.value) }))}
+                />
+              </label>
+
+              <label title="Default: 0.05">
+                Land Bias ({tuning.land_bias})
+                <input
+                  type="range" min="-0.5" max="0.5" step="0.01"
+                  value={tuning.land_bias}
+                  onChange={(e) => setTuning(prev => ({ ...prev, land_bias: Number(e.target.value) }))}
+                />
+              </label>
+            </div>
+          )}
 
           <button className="generate-button" type="button" onClick={generateTerrain}>
             Generate Terrain
@@ -263,6 +371,28 @@ function App() {
             </div>
             <div className="preview-canvas-wrapper">
               <canvas ref={rawCanvasRef} className="preview-canvas" />
+              {status === 'loading' && <div className="mini-loading-shimmer" />}
+            </div>
+          </article>
+
+          <article className="preview-card">
+            <div className="preview-labels">
+              <span>Perlin Contribution</span>
+              <strong>contribution_perlin.png</strong>
+            </div>
+            <div className="preview-canvas-wrapper">
+              <canvas ref={perlinCanvasRef} className="preview-canvas" />
+              {status === 'loading' && <div className="mini-loading-shimmer" />}
+            </div>
+          </article>
+
+          <article className="preview-card">
+            <div className="preview-labels">
+              <span>Value Contribution</span>
+              <strong>contribution_value.png</strong>
+            </div>
+            <div className="preview-canvas-wrapper">
+              <canvas ref={valueCanvasRef} className="preview-canvas" />
               {status === 'loading' && <div className="mini-loading-shimmer" />}
             </div>
           </article>

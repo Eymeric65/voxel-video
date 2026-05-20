@@ -183,10 +183,7 @@ export function ThreeDVisualizer({ heightMap, rawPixels, width, height, heightSc
       shader.fragmentShader = shader.fragmentShader.replace(
         '#include <map_fragment>',
         `
-        vec2 warpedUv = vUvMask;
-        float n = noise(vUvMask * 40.0) * 0.015; 
-        warpedUv += vec2(n, n);
-        vec4 sampledColor = texture2D(map, warpedUv);
+        vec4 sampledColor = texture2D(map, vUvMask);
         diffuseColor *= sampledColor;
         `
       );

@@ -10,6 +10,8 @@ export type TerrainBuffers = {
   heightMapBuffer: ArrayBuffer
   shadedPixelsBuffer: ArrayBuffer
   rawPixelsBuffer: ArrayBuffer
+  perlinContribBuffer: ArrayBuffer
+  valueContribBuffer: ArrayBuffer
 }
 
 export class Environment {
@@ -22,12 +24,12 @@ export class Environment {
   }
 
   private getIslandMask(x: number, y: number): number {
-    const nx = (x / this.size) * 2 - 1
-    const ny = (y / this.size) * 2 - 1
+    const nx = (x / (this.size - 1)) * 2 - 1
+    const ny = (y / (this.size - 1)) * 2 - 1
     const coastNoise = this.noiseGenerator.fbm(
       this.noiseGenerator.perlinNoise.bind(this.noiseGenerator),
-      (x / this.size) * 2,
-      (y / this.size) * 2,
+      (x / (this.size - 1)) * 2,
+      (y / (this.size - 1)) * 2,
       3,
     )
     const dist = Math.sqrt(nx ** 2 + ny ** 2) + (coastNoise - 0.5) * 0.12
@@ -39,12 +41,12 @@ export class Environment {
     const height = this.size
 
     const terrainHeightMap = new Float32Array(width * height)
-    const perlinContribMap = new Float32Array(width * height)
-    const valueContribMap = new Float32Array(width * height)
+    const perlinContribMap = new Uint8ClampedArray(width * height * 4)
+    const valueContribMap = new Uint8ClampedArray(width * height * 4)
 
     const perlinNoise = this.noiseGenerator.perlinNoise.bind(this.noiseGenerator)
     const valueNoise = this.noiseGenerator.valueNoise.bind(this.noiseGenerator)
-    const scale = 4 / this.size
+    const scale = 4 / (this.size - 1)
 
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
@@ -54,16 +56,48 @@ export class Environment {
         const ridgeNoise = this.noiseGenerator.fbm(perlinNoise, x * scale * 0.45, y * scale * 0.45, 3)
         const mask = this.getIslandMask(x, y)
 
-        const baseTerrain = smoothstep(0.28, 0.72, pNoise) * mask
-        const mountainCore = smoothstep(tuning.mountain_start, tuning.mountain_end, mask)
-        const valueGate = 0.35 + 0.65 * ridgeNoise
-        const mountainRidge = vNoise * mountainCore * valueGate * mask * tuning.value_strength
+                const baseTerrain = smoothstep(0.28, 0.72, pNoise) * mask
+        // Interpolation factor: where the transition happens
+        const mountainCore = smoothstep(tuning.mountain_start, tuning.mountain_end, baseTerrain)
+        
+        // Rocky Ridged Value Noise: forces sharp peaks
+        const vNoiseRaw = this.noiseGenerator.fbm(valueNoise, x * scale * 3, y * scale * 3, 4)
+        let vRocky = 1.0 - Math.abs(vNoiseRaw * 2.0 - 1.0)
+        vRocky = vRocky * vRocky // Square it for extra sharpness
 
-        const finalHeight = Math.min(1, baseTerrain * tuning.base_strength + mountainRidge + mask * tuning.land_bias)
+        // Target height for mountains: starts at base_terrain and adds rocky variation
+        const rockBase = baseTerrain * tuning.base_strength
+        const rockTarget = rockBase + vRocky * tuning.value_strength * 0.7
+
+        // Interpolate between base Perlin and Value-based rocky peaks
+        const combinedTerrain = rockBase * (1 - mountainCore) + rockTarget * mountainCore
+        
+        const finalHeight = Math.min(1, combinedTerrain + mask * tuning.land_bias)
 
         terrainHeightMap[index] = finalHeight
-        perlinContribMap[index] = Math.max(0, Math.min(1, baseTerrain))
-        valueContribMap[index] = Math.max(0, Math.min(1, mountainCore * mask))
+        
+        // Relative Contribution
+        const totalRaw = combinedTerrain + mask * tuning.land_bias
+        const eps = 1e-6
+        const denominator = Math.max(eps, totalRaw)
+
+        const pContrib = (baseTerrain * tuning.base_strength * (1 - mountainCore)) / denominator
+        const vContrib = (rockTarget * mountainCore) / denominator
+
+
+        const pVal = Math.max(0, Math.min(255, Math.floor(pContrib * 255)))
+        perlinContribMap[index * 4] = pVal
+        perlinContribMap[index * 4 + 1] = pVal
+        perlinContribMap[index * 4 + 2] = pVal
+        perlinContribMap[index * 4 + 3] = 255
+
+
+
+        const vVal = Math.max(0, Math.min(255, Math.floor(vContrib * 255)))
+        valueContribMap[index * 4] = vVal
+        valueContribMap[index * 4 + 1] = vVal
+        valueContribMap[index * 4 + 2] = vVal
+        valueContribMap[index * 4 + 3] = 255
       }
     }
 
@@ -237,7 +271,7 @@ export class Environment {
     this.size = size
     this.noiseGenerator = new NoiseGenerator(seed)
 
-    const { terrainHeightMap } = this.buildHeightMaps(tuning)
+    const { terrainHeightMap, perlinContribMap, valueContribMap } = this.buildHeightMaps(tuning)
     const postSurfaceHeightMap = this.postProcessSurface(terrainHeightMap, tuning)
     const rawPixels = this.renderRawPixels(terrainHeightMap, tuning)
     const shadedPixels = this.applyShading(postSurfaceHeightMap, rawPixels)
@@ -248,6 +282,8 @@ export class Environment {
       heightMapBuffer: postSurfaceHeightMap.buffer as ArrayBuffer,
       shadedPixelsBuffer: shadedPixels.buffer as ArrayBuffer,
       rawPixelsBuffer: rawPixels.buffer as ArrayBuffer,
+      perlinContribBuffer: perlinContribMap.buffer as ArrayBuffer,
+      valueContribBuffer: valueContribMap.buffer as ArrayBuffer,
     }
   }
 }

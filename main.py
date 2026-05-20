@@ -129,7 +129,7 @@ class TerrainTuning:
     snow_line: float = 0.86
     mountain_start: float = 0.72
     mountain_end: float = 0.96
-    value_strength: float = 0.30
+    value_strength: float = 0.18
     base_strength: float = 0.82
     land_bias: float = 0.05
 
@@ -142,12 +142,12 @@ class Environment:
 
     def get_island_mask(self, x: float, y: float) -> float:
         """Creates a softly irregular island mask."""
-        nx = x / self.size * 2.0 - 1.0
-        ny = y / self.size * 2.0 - 1.0
+        nx = x / (self.size - 1) * 2.0 - 1.0
+        ny = y / (self.size - 1) * 2.0 - 1.0
         coast_noise = self.noise_gen.fbm(
             self.noise_gen.perlin_noise,
-            x / self.size * 2.0,
-            y / self.size * 2.0,
+            x / (self.size - 1) * 2.0,
+            y / (self.size - 1) * 2.0,
             octaves=3,
         )
         dist = math.sqrt(nx**2 + ny**2) + (coast_noise - 0.5) * 0.12
@@ -164,7 +164,7 @@ class Environment:
         print("Generating height map...")
         for y in range(height):
             for x in range(width):
-                scale = 4.0 / self.size
+                scale = 4.0 / (self.size - 1)
                 p_noise = self.noise_gen.fbm(self.noise_gen.perlin_noise, x * scale, y * scale, octaves=5)
                 v_noise = self.noise_gen.fbm(self.noise_gen.value_noise, x * scale * 3.0, y * scale * 3.0, octaves=4)
                 ridge_noise = self.noise_gen.fbm(self.noise_gen.perlin_noise, x * scale * 0.45, y * scale * 0.45, octaves=3)
@@ -172,17 +172,32 @@ class Environment:
                 mask = self.get_island_mask(x, y)
 
                 base_terrain = smoothstep(0.28, 0.72, p_noise) * mask
-                mountain_core = smoothstep(tuning.mountain_start, tuning.mountain_end, mask)
-                value_gate = 0.35 + 0.65 * ridge_noise
-                mountain_ridge = v_noise * mountain_core * value_gate * mask * tuning.value_strength
+                # Define where the transition happens
+                mountain_core = smoothstep(tuning.mountain_start, tuning.mountain_end, base_terrain)
+                
+                # Rocky Ridged Value Noise: forces sharp peaks
+                v_noise_raw = self.noise_gen.fbm(self.noise_gen.value_noise, x * scale * 3.0, y * scale * 3.0, octaves=4)
+                v_rocky = 1.0 - abs(v_noise_raw * 2.0 - 1.0)
+                v_rocky = v_rocky * v_rocky  # Square it for extra sharpness
+                
+                # Target height for mountains: starts at base_terrain and adds rocky variation
+                # Reduced multiplier to prevent clipping and extreme roughness
+                rock_base = base_terrain * tuning.base_strength
+                rock_target = rock_base + v_rocky * tuning.value_strength * 0.7
 
-                final_height = min(1.0, base_terrain * tuning.base_strength + mountain_ridge + mask * tuning.land_bias)
+                # Interpolate between base Perlin and the rocky Value peaks
+                combined_terrain = lerp(rock_base, rock_target, mountain_core)
+                
+                final_height = min(1.0, combined_terrain + mask * tuning.land_bias)
                 
                 terrain_height_map[y][x] = final_height
                 
-                # Keep track of contributions
-                perlin_contrib_map[y][x] = max(0.0, min(1.0, base_terrain))
-                value_contrib_map[y][x] = max(0.0, min(1.0, mountain_core * mask))
+                # Contribution calculation
+                eps = 1e-6
+                total_raw = combined_terrain + (mask * tuning.land_bias)
+                denom = max(eps, total_raw)
+                perlin_contrib_map[y][x] = (base_terrain * tuning.base_strength * (1.0 - mountain_core)) / denom
+                value_contrib_map[y][x] = (rock_target * mountain_core) / denom
 
         return terrain_height_map, perlin_contrib_map, value_contrib_map
 
@@ -377,7 +392,7 @@ class Environment:
 def main():
     print("Generating 2D Island...")
     # Generate 512x512 images - increase size if more detail is needed
-    env = Environment(size=512, seed=1028)
+    env = Environment(size=512, seed=8742)
     # gen 1 : 6810
     env.generate()
     print("Generation complete! Check the .png files in your directory.")

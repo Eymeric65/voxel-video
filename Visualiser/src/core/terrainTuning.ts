@@ -7,7 +7,7 @@ export class TerrainTuning {
   snow_line = 0.86
   mountain_start = 0.72
   mountain_end = 0.96
-  value_strength = 0.3
+  value_strength = 0.18
   base_strength = 0.82
   land_bias = 0.05
 
