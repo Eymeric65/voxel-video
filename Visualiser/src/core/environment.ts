@@ -52,8 +52,8 @@ export class Environment {
       for (let x = 0; x < width; x += 1) {
         const index = y * width + x
         const pNoise = this.noiseGenerator.fbm(perlinNoise, x * scale, y * scale, 5)
-        const vNoise = this.noiseGenerator.fbm(valueNoise, x * scale * 3, y * scale * 3, 4)
-        const ridgeNoise = this.noiseGenerator.fbm(perlinNoise, x * scale * 0.45, y * scale * 0.45, 3)
+        // const vNoise = this.noiseGenerator.fbm(valueNoise, x * scale * 3, y * scale * 3, 4)
+        // const ridgeNoise = this.noiseGenerator.fbm(perlinNoise, x * scale * 0.45, y * scale * 0.45, 3)
         const mask = this.getIslandMask(x, y)
 
                 const baseTerrain = smoothstep(0.28, 0.72, pNoise) * mask
