@@ -233,22 +233,6 @@ export class Environment {
     return shadedPixels
   }
 
-  private toGrayscalePixels(values: Float32Array): Uint8ClampedArray {
-    const pixels = new Uint8ClampedArray(values.length * 4)
-
-    for (let index = 0; index < values.length; index += 1) {
-      const value = Math.max(0, Math.min(1, values[index]))
-      const intensity = Math.round(value * 255)
-      const pixelIndex = index * 4
-      pixels[pixelIndex] = intensity
-      pixels[pixelIndex + 1] = intensity
-      pixels[pixelIndex + 2] = intensity
-      pixels[pixelIndex + 3] = 255
-    }
-
-    return pixels
-  }
-
   generateTerrainData(seed: number, size: number, tuning: TerrainTuning): TerrainBuffers {
     this.size = size
     this.noiseGenerator = new NoiseGenerator(seed)

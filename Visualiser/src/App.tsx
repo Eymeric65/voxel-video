@@ -99,42 +99,7 @@ function App() {
     drawCanvas(rawCanvasRef.current, terrain.rawPixelsBuffer, terrain.width, terrain.height)
   }, [terrain])
 
-  const stats = useMemo(() => {
-    if (!terrain) {
-      return null
-    }
-
-    const heights = new Float32Array(terrain.heightMapBuffer)
-    let min = 1
-    let max = 0
-    let sum = 0
-    let land = 0
-    let highland = 0
-
-    for (const heightValue of heights) {
-      min = Math.min(min, heightValue)
-      max = Math.max(max, heightValue)
-      sum += heightValue
-
-      if (heightValue > 0.17) {
-        land += 1
-      }
-      if (heightValue > 0.74) {
-        highland += 1
-      }
-    }
-
-    const total = heights.length || 1
-
-    return {
-      min: Math.round(min * 1000) / 1000,
-      max: Math.round(max * 1000) / 1000,
-      mean: Math.round((sum / total) * 1000) / 1000,
-      land: Math.round((land / total) * 100),
-      highland: Math.round((highland / total) * 100),
-    }
-  }, [terrain])
-
+  // stats calculation removed to fix unused variable error
   const generateTerrain = () => {
     const parsedSeed = Number(seed)
     const parsedSize = Number(size)
